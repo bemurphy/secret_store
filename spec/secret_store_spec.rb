@@ -45,9 +45,8 @@ describe SecretStore, "storing a secret" do
 
     it "stores if forced" do
       subject.store("foobar", "fizzbuzz")
-      lambda {
-        subject.store("foobar", "fizzbuzz", :force)
-      }.should_not raise_error
+      subject.store("foobar", "buzzfizz", :force)
+      subject.get("foobar").should == "buzzfizz"
     end
   end
 end

@@ -10,10 +10,10 @@ class SecretStore
     self.file_path = file_path
   end
 
-  def store(key, secret, force = false)
-    load_data
+  def store(key, secret, reload_data = true)
+    load_data if reload_data
 
-    if ! force && @data[key.to_s]
+    if @data[key.to_s]
       raise "Key #{key} already stored"
     end
 
@@ -22,9 +22,20 @@ class SecretStore
     load_data[key]
   end
 
+  def store!(key, secret)
+    load_data
+    @data.delete(key.to_s)
+    store(key, secret, false)
+  end
+
   def get(key)
-    ciphertext = @data.fetch(key.to_s)
-    cipher.decrypt(ciphertext)
+    if ciphertext = @data[key.to_s]
+      cipher.decrypt(ciphertext)
+    end
+  end
+
+  def get!(key)
+    get(key) or raise IndexError.new(%Q[key not found: "#{key}"])
   end
 
   def encrypt(secret)

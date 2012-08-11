@@ -36,16 +36,16 @@ describe SecretStore, "storing a secret" do
   end
 
   context "when the key is already stored" do
-    it "raises if not forced" do
+    it "raises" do
       subject.store("foobar", "fizzbuzz")
       lambda {
         subject.store("foobar", "fizzbuzz")
       }.should raise_error
     end
 
-    it "stores if forced" do
+    it "can be overwritten with #store!" do
       subject.store("foobar", "fizzbuzz")
-      subject.store("foobar", "buzzfizz", :force)
+      subject.store!("foobar", "buzzfizz")
       subject.get("foobar").should == "buzzfizz"
     end
   end
@@ -60,18 +60,20 @@ describe SecretStore, "getting a secret" do
     subject.get("foobar").should == "fizzbuzz"
   end
 
-  it "raises IndexError if the key is not found" do
-    lambda{
-      subject.get("not_found")
-    }.should raise_error(IndexError)
-  end
-
   it "raises OpenSSL::Cipher::CipherError if the password for the store is wrong" do
     subject.store("foobar", "fizzbuzz")
     with_wrong_pass = SecretStore.new("wrong_pass", tmpfile.path)
     lambda {
       with_wrong_pass.get("foobar")
     }.should raise_error(OpenSSL::Cipher::CipherError)
+  end
+
+  context "when called via #get!" do
+    it "raises IndexError if the key is not found" do
+      lambda{
+        subject.get!("not_found")
+      }.should raise_error(IndexError)
+    end
   end
 end
 

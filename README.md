@@ -44,11 +44,12 @@ require "secret_store"
 secret_store = SecretStore.new("master_password", "/path/to/data.yml")
 secret_store.store("some_api_key", "c7dd199")
 secret_store.get("some_api_key") # => "c7dd199"
-secret_store.get("unknown_key") # => raises IndexError
+secret_store.get("unknown_key") # => nil
+secret_store.get!("unknown_key") # => raises IndexError
 
 secret_store.store("secret", "b123fa") # => stores
 secret_store.store("secret", "new_val")  # => raises error
-secret_store.store("secret", "new_val", :force) # => overwrites stored
+secret_store.store!("secret", "new_val") # => overwrites stored
 ```
 
 For a typical application, it could be desirable to define a

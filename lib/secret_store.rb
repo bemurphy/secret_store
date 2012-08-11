@@ -3,33 +3,21 @@ require "yaml"
 require "secret_store/version"
 
 class SecretStore
-  attr_reader :file_path
-
   def initialize(password, file_path)
     self.password = password
-    self.file_path = file_path
+    @data = YamlBackend.new(file_path)
   end
 
-  def store(key, secret, reload_data = true)
-    load_data if reload_data
-
-    if @data[key.to_s]
-      raise "Key #{key} already stored"
-    end
-
-    insert_secret(key, secret)
-    store_data
-    load_data[key]
+  def store(key, secret)
+    @data.insert(key, encrypt(secret))
   end
 
   def store!(key, secret)
-    load_data
-    @data.delete(key.to_s)
-    store(key, secret, false)
+    @data.overwrite(key, encrypt(secret))
   end
 
   def get(key)
-    if ciphertext = @data[key.to_s]
+    if ciphertext = @data[key]
       cipher.decrypt(ciphertext)
     end
   end
@@ -46,16 +34,9 @@ class SecretStore
     decrypted = decrypted_data
     self.password = new_password
     replace_with_decrypted(decrypted)
-    store_data
   end
 
   private
-
-  def file_path=(file_path)
-    @file_path = file_path
-    load_data
-    @file_path
-  end
 
   def password=(password)
     @cipher = nil
@@ -66,26 +47,8 @@ class SecretStore
     @cipher ||= Gibberish::AES.new(@password)
   end
 
-  def load_data
-    begin
-      @data = YAML.load_file(file_path) || {}
-    rescue Errno::ENOENT
-      @data = {}
-    end
-  end
-
-  def insert_secret(key, secret)
-    @data.merge!(key.to_s => encrypt(secret))
-  end
-
-  def store_data
-    File.open(@file_path, File::RDWR|File::CREAT|File::LOCK_EX, 0640) do |f|
-      f.puts YAML.dump @data
-    end
-  end
-
   def decrypted_data
-    @data.each_key.inject({}) do |decrypted_data, key|
+    @data.keys.inject({}) do |decrypted_data, key|
       decrypted_data[key] = get(key)
       decrypted_data
     end
@@ -93,7 +56,72 @@ class SecretStore
 
   def replace_with_decrypted(decrypted)
     decrypted.each do |key, plaintext|
-      @data[key] = encrypt(plaintext)
+      @data.overwrite(key, encrypt(plaintext))
+    end
+  end
+
+  class YamlBackend
+    SAVE_FLAGS = File::RDWR | File::CREAT | File::LOCK_EX
+    SAVE_PERMS = 0640
+
+    def initialize(file_path)
+      @file_path = file_path
+    end
+
+    def [](key)
+      data[key.to_s]
+    end
+
+    def keys
+      data.keys
+    end
+
+    def insert(key, value)
+      if self[key]
+        raise "Key #{key} already stored"
+      end
+
+      data[key.to_s] = value
+      save
+      value
+    end
+
+    def overwrite(key, value)
+      delete!(key.to_s)
+      insert(key, value)
+    end
+
+    def delete(key)
+      return unless self[key]
+      value = delete!(key)
+      save && value
+    end
+
+    def reload
+      @data = nil
+      data && true
+    end
+
+    private
+
+    def delete!(key)
+      data.delete(key.to_s)
+    end
+
+    def data
+      begin
+        @data ||= YAML.load_file(@file_path) || {}
+      rescue Errno::ENOENT
+        @data = {}
+      end
+    end
+
+    def save
+      File.open(@file_path, SAVE_FLAGS, SAVE_PERMS) do |f|
+        f.truncate(0)
+        f.puts YAML.dump(data)
+      end
+      true
     end
   end
 end

@@ -157,7 +157,14 @@ describe SecretStore::YamlBackend do
 
   it "can save the data" do
     subject.overwrite("foo", "123")
-    data = SecretStore::YamlBackend.new(tmpfile)
+    data = SecretStore::YamlBackend.new(tmpfile.path)
     data["foo"].should == "123"
+  end
+
+  it "will auto reload the data if the file mtime changes" do
+    pending("This is for gh-1")
+    subject["foo"].should == "bar"
+    SecretStore::YamlBackend.new(tmpfile.path).overwrite("foo", "changed")
+    subject["foo"].should == "changed"
   end
 end

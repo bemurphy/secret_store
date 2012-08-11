@@ -32,15 +32,11 @@ class SecretStore
   end
 
   def change_password(new_password)
-    new_data = {}
-
-    @data.each_key do |key|
-      new_data[key] = get(key)
-    end
+    decrypted = decrypted_data
 
     self.password = new_password
 
-    new_data.each do |key, plaintext|
+    decrypted.each do |key, plaintext|
       @data[key] = encrypt(plaintext)
     end
 
@@ -75,6 +71,13 @@ class SecretStore
   def store_data
     File.open(@file_path, File::RDWR|File::CREAT|File::LOCK_EX, 0640) do |f|
       f.puts YAML.dump @data
+    end
+  end
+
+  def decrypted_data
+    @data.each_key.inject({}) do |decrypted_data, key|
+      decrypted_data[key] = get(key)
+      decrypted_data
     end
   end
 end

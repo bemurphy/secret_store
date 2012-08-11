@@ -1,7 +1,7 @@
 SecretStore
 ===========
 
-Store secrets for your app in a encrypted in a yaml file.
+Store secrets for your app AES encrypted in a yaml file.
 
 Often when working on a web application, you have the need for storing a
 variety of API keys or secrets to 3rd party services.  However, it's not

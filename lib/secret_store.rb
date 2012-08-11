@@ -33,13 +33,8 @@ class SecretStore
 
   def change_password(new_password)
     decrypted = decrypted_data
-
     self.password = new_password
-
-    decrypted.each do |key, plaintext|
-      @data[key] = encrypt(plaintext)
-    end
-
+    replace_with_decrypted(decrypted)
     store_data
   end
 
@@ -78,6 +73,12 @@ class SecretStore
     @data.each_key.inject({}) do |decrypted_data, key|
       decrypted_data[key] = get(key)
       decrypted_data
+    end
+  end
+
+  def replace_with_decrypted(decrypted)
+    decrypted.each do |key, plaintext|
+      @data[key] = encrypt(plaintext)
     end
   end
 end

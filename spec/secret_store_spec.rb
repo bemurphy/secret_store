@@ -14,19 +14,19 @@ describe SecretStore, "storing a secret" do
   subject { SecretStore.new("the_pass", tmpfile.path) }
 
   context "when the key is not already stored" do
-    it "stores the key in a yaml data file" do
+    it "stores the value for the key in a yaml data file" do
       subject.store("foobar", "fizzbuzz")
       data = YAML.load_file(tmpfile.path)
       data["foobar"].should_not be_empty
     end
 
-    it "stores the key in an encrypted fashion" do
+    it "stores in an encrypted fashion" do
       subject.store("foobar", "fizzbuzz")
       data = YAML.load_file(tmpfile.path)
       data["foobar"].should_not == "fizzbuzz"
     end
 
-    it "leaves other keys in the data file intact" do
+    it "leaves other data in the store file intact" do
       tmpfile.puts YAML.dump("already" => "here")
       tmpfile.flush
       subject.store("foobar", "fizzbuzz")
@@ -36,14 +36,14 @@ describe SecretStore, "storing a secret" do
   end
 
   context "when the key is already stored" do
-    it "raises if the key is already stored" do
+    it "raises if not forced" do
       subject.store("foobar", "fizzbuzz")
       lambda {
         subject.store("foobar", "fizzbuzz")
       }.should raise_error
     end
 
-    it "stores an already stored key if forced" do
+    it "stores if forced" do
       subject.store("foobar", "fizzbuzz")
       lambda {
         subject.store("foobar", "fizzbuzz", :force)

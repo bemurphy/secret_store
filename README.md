@@ -6,6 +6,9 @@ Store secrets for your app in a encrypted in a yaml file.
 Often when working on a web application, you have the need for storing a
 variety of API keys or secrets to 3rd party services.  However, it's not
 desireable to check those secrets in as plain text to the code respository.
+This means that any 3rd party access to your repository provides that info.
+With SecretStore, parties without knowledge of the master password (this can
+include your own team members!) will not have direct access to such secrets.
 
 One common way around this is to set such keys in the environment.  This is,
 for example, what [Heroku recommends](https://devcenter.heroku.com/articles/config-vars)

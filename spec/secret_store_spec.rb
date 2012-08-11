@@ -5,7 +5,6 @@ describe SecretStore, "initializing" do
 
   it "takes a password and file path" do
     subject = SecretStore.new("pass", tmpfile.path)
-    subject.file_path.should == tmpfile.path
   end
 end
 
@@ -82,11 +81,15 @@ describe SecretStore, "changing the password" do
   subject { SecretStore.new("the_pass", tmpfile.path) }
 
   it "resets the value for each secret key" do
-    tmpfile.puts YAML.dump("foo" => "bar", "fizz" => "buzz")
+    subject.store("foo", "bar")
+    subject.store("fizz", "buzz")
+    original_data = YAML.load_file(tmpfile.path)
+
     subject.change_password("new_password")
+
     data = YAML.load_file(tmpfile.path)
-    data["foo"].should_not == "bar"
-    data["fizz"].should_not == "buzz"
+    data["foo"].should_not == original_data["foo"]
+    data["fizz"].should_not == original_data["fizz"]
   end
 
   it "leaves you with the ability to get secrets using the new password" do
@@ -97,5 +100,64 @@ describe SecretStore, "changing the password" do
 
     with_new_pass = SecretStore.new("new_pass", tmpfile.path)
     subject.get("foo").should == "bar"
+  end
+end
+
+describe SecretStore::YamlBackend do
+  let(:tmpfile) { Tempfile.new("secret_store") }
+  subject { SecretStore::YamlBackend.new(tmpfile) }
+
+  before do
+    tmpfile.puts YAML.dump("foo" => "bar", "fizz" => "buzz")
+    tmpfile.flush
+  end
+
+  it "reads indifferently from its data using []" do
+    subject["foo"].should == "bar"
+    subject["fizz"].should == "buzz"
+    subject[:fizz].should == "buzz"
+  end
+
+  it "can return the keys on data" do
+    subject.keys.should =~ %w[foo fizz]
+  end
+
+  it "can reload data on demand" do
+    File.open(tmpfile.path, 'w') do |f|
+      f.puts YAML.dump("foo" => "reloaded")
+    end
+
+    subject.reload
+    subject["foo"].should == "reloaded"
+  end
+
+  it "can insert a value for a non-existant key" do
+    subject.insert("new", "value")
+    subject.reload
+    subject["new"].should == "value"
+  end
+
+  it "will raise an error trying to insert for an existing key" do
+    lambda {
+      subject.insert("foo", "123")
+    }.should raise_error
+  end
+
+  it "can overwrite an existing key" do
+    subject.overwrite("foo", "123")
+    subject.reload
+    subject["foo"].should == "123"
+  end
+
+  it "can delete a key" do
+    subject.delete("foo").should == "bar"
+    subject.reload
+    subject.keys.should == ["fizz"]
+  end
+
+  it "can save the data" do
+    subject.overwrite("foo", "123")
+    data = SecretStore::YamlBackend.new(tmpfile)
+    data["foo"].should == "123"
   end
 end

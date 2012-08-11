@@ -17,7 +17,7 @@ class SecretStore
       raise "Key #{key} already stored"
     end
 
-    @data.merge!(key.to_s => encrypt(secret))
+    insert_secret(key, secret)
     store_data
     load_data[key]
   end
@@ -72,6 +72,10 @@ class SecretStore
     rescue Errno::ENOENT
       @data = {}
     end
+  end
+
+  def insert_secret(key, secret)
+    @data.merge!(key.to_s => encrypt(secret))
   end
 
   def store_data

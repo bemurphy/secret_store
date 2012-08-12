@@ -111,7 +111,7 @@ end
 
 describe SecretStore::YamlBackend do
   let(:tmpfile) { Tempfile.new("secret_store") }
-  subject { SecretStore::YamlBackend.new(tmpfile) }
+  subject { SecretStore::YamlBackend.new(tmpfile.path) }
 
   before do
     tmpfile.puts YAML.dump("foo" => "bar", "fizz" => "buzz")

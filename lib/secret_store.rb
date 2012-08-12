@@ -74,7 +74,7 @@ class SecretStore
   end
 
   class YamlBackend
-    SAVE_FLAGS = File::RDWR | File::CREAT | File::LOCK_EX | File::LOCK_NB
+    SAVE_FLAGS = File::TRUNC | File::CREAT | File::LOCK_EX | File::LOCK_NB
     SAVE_PERMS = 0640
 
     def initialize(file_path)
@@ -143,10 +143,7 @@ class SecretStore
     end
 
     def save
-      #TODO figure out the WRONLY flag so we don't
-      # have to truncate
       File.open(@file_path, SAVE_FLAGS, SAVE_PERMS) do |f|
-        f.truncate(0)
         f.write YAML.dump(data)
         reset_mtime_tracker
         true

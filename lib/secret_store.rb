@@ -1,11 +1,20 @@
-require "gibberish"
 require "yaml"
+require "timeout"
+require "gibberish"
 require "secret_store/version"
 
 class SecretStore
-  def initialize(password, file_path)
+  class ReadOnly < RuntimeError; end
+
+  def initialize(password, file_path, options = {})
     self.password = password
-    @data = YamlBackend.new(file_path)
+    backend_class = options.fetch(:backend_class, YamlBackend)
+    @data = backend_class.new(file_path)
+  end
+
+  def self.new_read_only(password, file_path)
+    store = new(password, file_path, :backend_class => ReadOnlyYamlBackend)
+    store
   end
 
   def store(key, secret)
@@ -31,6 +40,10 @@ class SecretStore
   end
 
   def change_password(new_password)
+    unless @data.permits_writes?
+      raise ReadOnly
+    end
+
     decrypted = decrypted_data
     self.password = new_password
     replace_with_decrypted(decrypted)
@@ -61,7 +74,7 @@ class SecretStore
   end
 
   class YamlBackend
-    SAVE_FLAGS = File::RDWR | File::CREAT | File::LOCK_EX
+    SAVE_FLAGS = File::RDWR | File::CREAT | File::LOCK_EX | File::LOCK_NB
     SAVE_PERMS = 0640
 
     def initialize(file_path)
@@ -69,10 +82,12 @@ class SecretStore
     end
 
     def [](key)
+      reload_if_updated
       data[key.to_s]
     end
 
     def keys
+      reload_if_updated
       data.keys
     end
 
@@ -102,10 +117,21 @@ class SecretStore
       data && true
     end
 
+    def permits_writes?
+      true
+    end
+
     private
 
     def delete!(key)
+      reset_mtime_tracker
       data.delete(key.to_s)
+    end
+
+    def reload_if_updated
+      mtime = File.exists?(@file_path) && File.mtime(@file_path)
+      @mtime_tracker ||= mtime
+      @mtime_tracker != mtime && reload
     end
 
     def data
@@ -117,11 +143,36 @@ class SecretStore
     end
 
     def save
+      #TODO figure out the WRONLY flag so we don't
+      # have to truncate
       File.open(@file_path, SAVE_FLAGS, SAVE_PERMS) do |f|
         f.truncate(0)
-        f.puts YAML.dump(data)
+        f.write YAML.dump(data)
+        reset_mtime_tracker
+        true
       end
-      true
+    end
+
+    def reset_mtime_tracker
+      @mtime_tracker = nil
+    end
+  end
+
+  class ReadOnlyYamlBackend < YamlBackend
+    [:insert, :overwrite, :delete, :save].each do |meth|
+      define_method meth do |*|
+        raise ReadOnly
+      end
+    end
+
+    def permits_writes?
+      false
+    end
+
+    private
+
+    def reload_if_updated
+      #no-op
     end
   end
 end

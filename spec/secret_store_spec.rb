@@ -6,6 +6,12 @@ describe SecretStore, "initializing" do
   it "takes a password and file path" do
     subject = SecretStore.new("pass", tmpfile.path)
   end
+
+  it "can be optionally injected with a backend class" do
+    klass = Class.new
+    klass.should_receive(:new)
+    subject = SecretStore.new("pass", tmpfile.path, :backend_class => klass)
+  end
 end
 
 describe SecretStore, "storing a secret" do
@@ -162,9 +168,41 @@ describe SecretStore::YamlBackend do
   end
 
   it "will auto reload the data if the file mtime changes" do
-    pending("This is for gh-1")
     subject["foo"].should == "bar"
     SecretStore::YamlBackend.new(tmpfile.path).overwrite("foo", "changed")
+    FileUtils.touch(tmpfile.path, :mtime => Time.now + 5)
     subject["foo"].should == "changed"
+  end
+
+  it "can create a file that doesn't exist" do
+    path = tmpfile.path
+    tmpfile.unlink
+    store = SecretStore::YamlBackend.new(path)
+    store["foo"].should be_nil
+    store.insert("foo", "bar")
+    store["foo"].should == "bar"
+  end
+end
+
+describe SecretStore::ReadOnlyYamlBackend do
+  let(:tmpfile) { Tempfile.new("secret_store") }
+  subject { SecretStore::ReadOnlyYamlBackend.new(tmpfile) }
+
+  it "doesn't allow inserts" do
+    lambda {
+      subject.insert("foo", "bar")
+    }.should raise_error(SecretStore::ReadOnly)
+  end
+
+  it "doesn't allow overwrites" do
+    lambda {
+      subject.overwrite("foo", "bar")
+    }.should raise_error(SecretStore::ReadOnly)
+  end
+
+  it "doesn't allow deletes" do
+    lambda {
+      subject.delete("foo")
+    }.should raise_error(SecretStore::ReadOnly)
   end
 end

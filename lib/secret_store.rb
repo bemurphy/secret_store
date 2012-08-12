@@ -1,5 +1,4 @@
 require "yaml"
-require "timeout"
 require "gibberish"
 require "secret_store/version"
 

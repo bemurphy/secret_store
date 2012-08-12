@@ -55,6 +55,19 @@ secret_store.store!("secret", "new_val") # => overwrites stored
 For a typical application, it could be desirable to define a
 single SecretStore instance;  for example, in a rails initializer.
 
+For a production server with a static set of data, you should initialize
+a read only SecretStore
+
+```ruby
+secret_store = SecretStore.new_read_only("master_password", "/path/to/data.yml")
+```
+
+This will prevent changing the data and cut back some implementation checks, so
+reads should be faster.
+
+In development mode, using a normal SecretStore allows you to update store information
+from the console without restarting the server.
+
 How
 ---
 

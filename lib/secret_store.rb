@@ -13,8 +13,7 @@ class SecretStore
   end
 
   def self.new_read_only(password, file_path)
-    store = new(password, file_path, :backend_class => ReadOnlyYamlBackend)
-    store
+    new(password, file_path, :backend_class => ReadOnlyYamlBackend)
   end
 
   def store(key, secret)

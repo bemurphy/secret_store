@@ -186,7 +186,7 @@ end
 
 describe SecretStore::ReadOnlyYamlBackend do
   let(:tmpfile) { Tempfile.new("secret_store") }
-  subject { SecretStore::ReadOnlyYamlBackend.new(tmpfile) }
+  subject { SecretStore::ReadOnlyYamlBackend.new(tmpfile.path) }
 
   it "doesn't allow inserts" do
     lambda {
